@@ -14,9 +14,9 @@ class DataCleaningEnv(gym.Env):
         self.state = 0
 
         # Ações do codificador
-        self.action_space_coder = spaces.Discrete(4)
+        self.action_space_coder = spaces.Discrete(5) # Aumentei uma ação aqui (de 4 para 5)
         # Ações do revisor
-        self.action_space_reviewer = spaces.Discrete(5)
+        self.action_space_reviewer = spaces.Discrete(6) # Aumentei uma ação aqui (de 5 para 6)
 
         # Dataset bruto (simulado)
         self.raw_data = self.generate_raw_data()
@@ -47,7 +47,10 @@ class DataCleaningEnv(gym.Env):
             0: "Remover linhas com valores faltantes.",
             1: "Remover colunas com mais de 67% de valores faltantes.",
             2: "Interpolar valores faltantes.",
-            3: "Preencher valores faltantes com a média."
+            3: "Preencher valores faltantes com a média.",
+            4: "Remover colunas com 100% de valores faltantes."
+            # 5: "Preencher valores faltantes com a mediana.", 
+            # 6: "Preencher valores faltantes com zero." # Coloquei essas duas últimas ações com comentário, apenas para deixar registrado algumas ideias de ações adicionais
         }
         prompt = actions[action]
 
@@ -60,11 +63,20 @@ class DataCleaningEnv(gym.Env):
             # Atualizar o DataFrame após a execução
             self.df = eval("df")
             reward = self.evaluate_cleaning()
-            done = False
+            total_missing = self.df.isnull().sum().sum()
+            if total_missing == 0:
+                done = True  # O DataFrame está totalmente limpo
+            elif action == 4:  # Nova condição: remoção de colunas 100% faltantes
+                done = True
+            else:
+                done = False
+
+
         except Exception as e:
             # Penalizar se o código gerar erro
             reward = -1
             done = True
+            print(f"Erro ao executar a ação do codificador: {e}")
 
         # Atualizar o estado (pode ser incrementado ou mantido simples)
         self.state = 0
@@ -78,7 +90,8 @@ class DataCleaningEnv(gym.Env):
             1: "Sugerir remoção de colunas com muitos valores faltantes.",
             2: "Sugerir interpolação de valores faltantes.",
             3: "Sugerir preenchimento com média.",
-            4: "Sugerir nenhuma ação."
+            4: "Sugerir nenhuma ação.",
+            5: "Sugerir remoção de linhas com valores 100% falantes." #Adicionei essa recomendação, caso utilizemos algumas das demais ações sugeridas, modificamos aqui
         }
         prompt = actions[action]
 

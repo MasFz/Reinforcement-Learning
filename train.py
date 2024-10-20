@@ -19,6 +19,8 @@ num_episodes = 100
 rewards_coder = []
 rewards_reviewer = []
 
+missing_values = [] # Lista para armazenar a quantidade de valores faltantes em cada episódio
+
 for episode in range(num_episodes):
     state = env.reset()
     total_reward_coder = 0
@@ -45,6 +47,9 @@ for episode in range(num_episodes):
     rewards_coder.append(total_reward_coder)
     rewards_reviewer.append(total_reward_reviewer)
 
+    # Armazenar a quantidade de valores faltantes restantes após o episódio
+    missing_values.append(env.df.isnull().sum().sum())
+
     if (episode + 1) % 10 == 0:
         print(f"Episódio {episode+1}/{num_episodes} concluído.")
         print(f"Recompensa Codificador: {total_reward_coder}, Recompensa Revisor: {total_reward_reviewer}")
@@ -57,5 +62,13 @@ plt.plot(rewards_reviewer, label="Agente Revisor")
 plt.xlabel("Episódio")
 plt.ylabel("Recompensa")
 plt.title("Recompensas por Episódio")
+plt.legend()
+plt.show()
+
+# Plotar os valores faltantes
+plt.plot(missing_values, label="Valores faltantes")
+plt.xlabel("Episódio")
+plt.ylabel("Valores Faltantes Restantes")
+plt.title("Evolução dos Valores Faltantes por Episódio")
 plt.legend()
 plt.show()
