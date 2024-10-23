@@ -15,7 +15,7 @@ class DatasetDisruptor:
 
     def introduce_missing_values(self, df, missing_fraction=0.1):
         """
-        Introduz valores faltantes (NaN) no DataFrame de forma aleatória, com um nível de complexidade que pode ser corrigido pelo modelo atual.
+        Introduz valores faltantes (NaN) no DataFrame de forma aleatória.
 
         Args:
             df (pd.DataFrame): O DataFrame original e limpo.
@@ -29,16 +29,16 @@ class DatasetDisruptor:
         n_missing = int(n_total * min(missing_fraction, 0.2))  # Limitar para 20% de valores faltantes
 
         # Obter índices aleatórios para colocar valores faltantes
-        missing_indices = (
-            np.random.randint(0, df.shape[0], n_missing),
-            np.random.randint(0, df.shape[1], n_missing)
-        )
-        df_broken.values[missing_indices] = np.nan
+        indices = [(row, col) for row in range(df.shape[0]) for col in range(df.shape[1])]
+        missing_indices = np.random.choice(len(indices), n_missing, replace=False)
+        for idx in missing_indices:
+            row, col = indices[idx]
+            df_broken.iat[row, col] = np.nan
         return df_broken
 
     def introduce_column_missing(self, df, col_missing_fraction=0.1):
         """
-        Remove colunas inteiras de valores em uma fração específica que possa ser facilmente detectada pelo modelo atual.
+        Remove colunas inteiras de valores em uma fração específica.
 
         Args:
             df (pd.DataFrame): O DataFrame original e limpo.
@@ -59,7 +59,7 @@ class DatasetDisruptor:
 
     def introduce_row_missing(self, df, row_missing_fraction=0.05):
         """
-        Remove linhas inteiras de valores em uma fração específica que possa ser facilmente corrigida pelo modelo atual.
+        Remove linhas inteiras de valores em uma fração específica.
 
         Args:
             df (pd.DataFrame): O DataFrame original e limpo.
@@ -80,7 +80,7 @@ class DatasetDisruptor:
 
     def add_noise(self, df, noise_fraction=0.02, noise_level=0.05):
         """
-        Adiciona ruído gaussiano a uma pequena fração dos valores numéricos do DataFrame que possam ser corrigidos por ações como interpolação.
+        Adiciona ruído gaussiano a uma pequena fração dos valores numéricos do DataFrame.
 
         Args:
             df (pd.DataFrame): O DataFrame original e limpo.
@@ -91,24 +91,23 @@ class DatasetDisruptor:
             pd.DataFrame: DataFrame com ruído adicionado a alguns valores numéricos.
         """
         df_broken = df.copy()
-        n_total = df.select_dtypes(include=[np.number]).size
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        n_total = df[numeric_cols].size
         n_noisy = int(n_total * min(noise_fraction, 0.02))  # Limitar para 2% de valores numéricos com ruído
 
         # Obter índices aleatórios para adicionar ruído
-        noisy_indices = (
-            np.random.randint(0, df.shape[0], n_noisy),
-            np.random.randint(0, df.shape[1], n_noisy)
-        )
-
-        # Adicionar ruído aos valores numéricos
-        for i, j in zip(noisy_indices[0], noisy_indices[1]):
-            if pd.api.types.is_numeric_dtype(df_broken.iloc[i, j]):
-                df_broken.iloc[i, j] += np.random.normal(0, noise_level)
+        indices = [(row, col) for row in df.index for col in numeric_cols]
+        noisy_indices = np.random.choice(len(indices), n_noisy, replace=False)
+        for idx in noisy_indices:
+            row, col = indices[idx]
+            original_value = df_broken.at[row, col]
+            if pd.notnull(original_value):
+                df_broken.at[row, col] += np.random.normal(0, noise_level)
         return df_broken
 
     def break_dataset(self, df, missing_fraction=0.1, col_missing_fraction=0.1, row_missing_fraction=0.05, noise_fraction=0.02, noise_level=0.05):
         """
-        Aplica uma combinação de quebras ao dataset original de forma controlada, em níveis que podem ser corrigidos pelo modelo atual.
+        Aplica uma combinação de quebras ao dataset original de forma controlada.
 
         Args:
             df (pd.DataFrame): O DataFrame original e limpo.
@@ -126,3 +125,4 @@ class DatasetDisruptor:
         df_broken = self.introduce_row_missing(df_broken, row_missing_fraction)
         df_broken = self.add_noise(df_broken, noise_fraction, noise_level)
         return df_broken
+    

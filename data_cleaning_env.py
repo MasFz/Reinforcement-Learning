@@ -1,127 +1,86 @@
-import gym
-from gym import spaces
 import numpy as np
 import pandas as pd
 
-class DataCleaningEnv(gym.Env):
+class DataCleaningEnv:
     def __init__(self, llm_client):
-        super(DataCleaningEnv, self).__init__()
-
         self.llm_client = llm_client
-
-        # Estados to usando aqui números discretos para cada estado
-        self.state_space = spaces.Discrete(1)
-        self.state = 0
-
-        # Ações do codificador
-        self.action_space_coder = spaces.Discrete(5) # Aumentei uma ação aqui (de 4 para 5)
-        # Ações do revisor
-        self.action_space_reviewer = spaces.Discrete(6) # Aumentei uma ação aqui (de 5 para 6)
-
-        # Dataset bruto (simulado)
-        self.raw_data = self.generate_raw_data()
-        self.df = self.raw_data.copy()
-
-        self.done = False
-
-    def generate_raw_data(self):
-        # Gerar um DataFrame com valores faltantes
-        data = {
-            "A": [1, np.nan, 3, np.nan, 5],
-            "B": [np.nan, 2, np.nan, 4, np.nan],
-            "C": [1, 2, 3, 4, 5],
-            "D": [np.nan, np.nan, np.nan, np.nan, np.nan]  # Coluna com 100% de valores faltantes
-        }
-        df = pd.DataFrame(data)
-        return df
+        self.reset()
 
     def reset(self):
-        self.state = 0
-        self.df = self.raw_data.copy()
-        self.done = False
+        # Inicializa o ambiente com um DataFrame sintético
+        self.df = pd.DataFrame(np.random.randint(0, 100, size=(5, 4)), columns=list('ABCD'))
+        self.df = self.df.mask(np.random.random(self.df.shape) < 0.2)
+        self.state = self._get_state()
+        # Inicializa o atributo missing_percent_before_feedback
+        self.missing_percent_before_feedback = self.df.isnull().mean().mean()
         return self.state
 
-    def step_coder(self, action):
-        # Mapear a ação para uma operação de limpeza
-        actions = {
-            0: "Remover linhas com valores faltantes.",
-            1: "Remover colunas com mais de 67% de valores faltantes.",
-            2: "Interpolar valores faltantes.",
-            3: "Preencher valores faltantes com a média.",
-            4: "Remover colunas com 100% de valores faltantes."
-            # 5: "Preencher valores faltantes com a mediana.", 
-            # 6: "Preencher valores faltantes com zero." # Coloquei essas duas últimas ações com comentário, apenas para deixar registrado algumas ideias de ações adicionais
-        }
-        prompt = actions[action]
+    def _get_state(self):
+        # Retorna uma representação do estado atual (por exemplo, percentagem de valores faltantes)
+        missing_percent = self.df.isnull().mean().mean()
+        return np.array([missing_percent])
 
-        # Obter código de limpeza da LLM
-        code = self.llm_client.generate_code(prompt)
-
-        # Aplicar o código ao DataFrame
+    def step_coder(self, code):
+        print("Executando código:\n", code)
         try:
-            exec(code, {"df": self.df, "np": np, "pd": pd})
-            # Atualizar o DataFrame após a execução
-            self.df = eval("df")
-            reward = self.evaluate_cleaning()
-            total_missing = self.df.isnull().sum().sum()
-            if total_missing == 0:
-                done = True  # O DataFrame está totalmente limpo
-            elif action == 4:  # Nova condição: remoção de colunas 100% faltantes
-                done = True
+            # Verifica se o código contém chamadas não permitidas como 'input()'
+            if 'input(' in code:
+                raise ValueError("O código gerado contém chamadas para input(), que não são permitidas.")
+
+            # Compila o código para verificar a sintaxe
+            compiled_code = compile(code, '<string>', 'exec')
+            # Cria um namespace seguro para execução
+            safe_globals = {'df': self.df.copy(), 'pd': pd, 'np': np, '__builtins__': None}
+            safe_locals = {}
+            # Executa o código
+            exec(compiled_code, safe_globals, safe_locals)
+            # Atualiza o DataFrame após a execução do código
+            if 'df' in safe_globals:
+                self.df = safe_globals['df']
+            elif 'df' in safe_locals:
+                self.df = safe_locals['df']
             else:
-                done = False
-
-
-        except Exception as e:
-            # Penalizar se o código gerar erro
+                print("O código não modificou o DataFrame.")
+            # Atualiza o estado
+            self.state = self._get_state()
+            # Atualiza missing_percent_before_feedback
+            self.missing_percent_before_feedback = self.df.isnull().mean().mean()
+            reward = self._calculate_reward_coder()
+            done = self._check_done()
+            return self.state, reward, done, {}
+        except SyntaxError as e:
+            print(f"Erro de sintaxe no código gerado: {e}")
+            # Penaliza por código inválido
             reward = -1
             done = True
-            print(f"Erro ao executar a ação do codificador: {e}")
+            return self.state, reward, done, {}
+        except Exception as e:
+            print(f"Erro ao executar o código gerado: {e}")
+            # Penaliza por erro de execução
+            reward = -0.5
+            done = False
+            return self.state, reward, done, {}
 
-        # Atualizar o estado (pode ser incrementado ou mantido simples)
-        self.state = 0
-
+    def step_reviewer(self, feedback):
+        print("Feedback recebido:", feedback)
+        # Processa o feedback do revisor (aqui, não fazemos nada com o feedback)
+        reward = self._calculate_reward_reviewer()
+        done = self._check_done()
         return self.state, reward, done, {}
 
-    def step_reviewer(self, action):
-        # Mapear a ação para um feedback
-        actions = {
-            0: "Aprovar limpeza.",
-            1: "Sugerir remoção de colunas com muitos valores faltantes.",
-            2: "Sugerir interpolação de valores faltantes.",
-            3: "Sugerir preenchimento com média.",
-            4: "Sugerir nenhuma ação.",
-            5: "Sugerir remoção de linhas com valores 100% falantes." #Adicionei essa recomendação, caso utilizemos algumas das demais ações sugeridas, modificamos aqui
-        }
-        prompt = actions[action]
-
-        # Obter feedback da LLM
-        feedback = self.llm_client.generate_feedback(prompt)
-
-        # Avaliar o feedback (simples para este exemplo)
-        reward = self.evaluate_feedback(feedback)
-        done = False
-
-        return self.state, reward, done, {}
-
-    def evaluate_cleaning(self):
-        # Avaliar o DataFrame limpo
-        total_missing = self.df.isnull().sum().sum()
-        if total_missing == 0:
-            reward = 1  # Recompensa máxima se não houver valores faltantes
-        else:
-            reward = -total_missing / (self.df.size)  # Penaliza proporcionalmente aos valores faltantes
+    def _calculate_reward_coder(self):
+        # Calcula a recompensa para o codificador
+        missing_percent = self.df.isnull().mean().mean()
+        reward = -missing_percent  # Recompensa negativa proporcional aos valores faltantes
         return reward
 
-    def evaluate_feedback(self, feedback):
-        # Avaliar se o feedback é útil (simplificado)
-        if "considere" in feedback.lower() or "verifique" in feedback.lower():
-            reward = 1
-        else:
-            reward = 0
+    def _calculate_reward_reviewer(self):
+        # Calcula a recompensa para o revisor
+        missing_percent_after = self.df.isnull().mean().mean()
+        improvement = self.missing_percent_before_feedback - missing_percent_after
+        reward = improvement * 10  # Escala a melhoria para ajustar a recompensa
         return reward
 
-    def render(self, mode="human"):
-        print("Estado atual:", self.state)
-        print("DataFrame atual:")
-        print(self.df)
+    def _check_done(self):
+        # Verifica se o episódio terminou
+        return False
