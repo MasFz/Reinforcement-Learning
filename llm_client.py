@@ -1,4 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 import torch
 
 class LLMClient:
@@ -30,8 +31,8 @@ class LLMClient:
             output = self.code_model.generate(
                 input_ids=inputs['input_ids'],
                 attention_mask=inputs['attention_mask'],
-                max_new_tokens=150,
-                num_return_sequences=1,
+                max_new_tokens=500,
+                num_return_sequences=2,
                 no_repeat_ngram_size=2,
                 do_sample=True,
                 temperature=0.7
@@ -59,7 +60,7 @@ class LLMClient:
             output = self.feedback_model.generate(
                 input_ids=inputs['input_ids'],
                 attention_mask=inputs['attention_mask'],
-                max_new_tokens=50,
+                max_new_tokens=100,
                 num_return_sequences=1,
                 no_repeat_ngram_size=2,
                 do_sample=True,

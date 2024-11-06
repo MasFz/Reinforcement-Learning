@@ -1,7 +1,7 @@
 import numpy as np
 
 class CoderAgent:
-    def __init__(self, num_states, num_actions, epsilon=1.1, alpha=0.1, gamma=0.95):
+    def __init__(self, num_states, num_actions, epsilon=0.75, alpha=0.5, gamma=0.8):
         self.q_table = np.zeros((num_states, num_actions))
         self.epsilon = epsilon  # Taxa de exploração
         self.alpha = alpha      # Taxa de aprendizado
@@ -32,7 +32,7 @@ class CoderAgent:
         self.epsilon = max(min_epsilon, self.epsilon * decay_rate)
 
 class ReviewerAgent:
-    def __init__(self, num_states, num_actions, epsilon=1.1, alpha=0.1, gamma=0.95):
+    def __init__(self, num_states, num_actions, epsilon=0.75, alpha=0.5, gamma=0.8):
         self.q_table = np.zeros((num_states, num_actions))
         self.epsilon = epsilon  # Taxa de exploração
         self.alpha = alpha      # Taxa de aprendizado

@@ -20,7 +20,7 @@ coder_agent = CoderAgent(num_states, num_coder_actions)
 reviewer_agent = ReviewerAgent(num_states, num_reviewer_actions)
 
 # Parâmetros de treinamento
-num_episodes = 50
+num_episodes = 5
 coder_rewards = []
 reviewer_rewards = []
 
@@ -54,7 +54,7 @@ for episode in range(num_episodes):
         code = llm_client.generate_code(prompt)
 
         # O ambiente executa o código
-        next_state, reward_coder, done_coder, _ = env.step_coder(code)
+        next_state, reward_coder, done_coder, _ = env.step_coder(code, coder_action_index)
         total_coder_reward += reward_coder
 
         # Atualiza o agente Codificador
@@ -88,8 +88,8 @@ for episode in range(num_episodes):
         done = done_coder or done_reviewer
 
     # Decai o epsilon (exploração)
-    coder_agent.decay_epsilon(decay_rate=0.99, min_epsilon=0.1)
-    reviewer_agent.decay_epsilon(decay_rate=0.99, min_epsilon=0.1)
+    coder_agent.decay_epsilon(decay_rate=0.995, min_epsilon=0.1)
+    reviewer_agent.decay_epsilon(decay_rate=0.995, min_epsilon=0.1)
 
     coder_rewards.append(total_coder_reward)
     reviewer_rewards.append(total_reviewer_reward)
