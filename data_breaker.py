@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 
@@ -125,4 +126,46 @@ class DatasetDisruptor:
         df_broken = self.introduce_row_missing(df_broken, row_missing_fraction)
         df_broken = self.add_noise(df_broken, noise_fraction, noise_level)
         return df_broken
-    
+
+if __name__ == "__main__":
+    # Diretório com os dataframes originais
+    input_folder = "data"
+    # Diretório para salvar os dataframes quebrados
+    output_folder = "broken_data"
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+        print(f"Criada a pasta de saída: {output_folder}")
+
+    # Verifica se a pasta de entrada existe
+    if not os.path.exists(input_folder):
+        print(f"A pasta de entrada '{input_folder}' não existe. Verifique o caminho.")
+        exit(1)
+
+    # Lista os arquivos na pasta de entrada
+    input_files = os.listdir(input_folder)
+    print(f"Arquivos encontrados na pasta '{input_folder}': {input_files}")
+
+    # Inicializa o disruptor
+    disruptor = DatasetDisruptor()
+
+    # Percorre todos os arquivos .csv na pasta de entrada
+    for filename in input_files:
+        if filename.endswith(".csv"):
+            filepath = os.path.join(input_folder, filename)
+            print(f"Processando arquivo: {filepath}")
+            try:
+                df = pd.read_csv(filepath)
+            except Exception as e:
+                print(f"Erro ao ler o arquivo '{filename}': {e}")
+                continue
+
+            # Aplica as quebras no dataframe
+            df_broken = disruptor.break_dataset(df)
+
+            # Salva o dataframe quebrado na pasta de saída
+            output_filepath = os.path.join(output_folder, filename)
+            df_broken.to_csv(output_filepath, index=False)
+            print(f"Arquivo quebrado salvo em: {output_filepath}")
+        else:
+            print(f"Arquivo ignorado (não é .csv): {filename}")

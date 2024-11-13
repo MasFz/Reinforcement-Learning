@@ -1,3 +1,4 @@
+# agents.py
 import numpy as np
 
 class CoderAgent:
@@ -9,7 +10,7 @@ class CoderAgent:
         # Defina as ações possíveis (por exemplo, diferentes tipos de prompts)
         self.actions = [
             "Remover linhas com valores nulos em 'df'",
-            "Preencher valores nulos em 'df' com a média",
+            "Preencher valores nulos em colunas numéricas de 'df' com a média",
             "Preencher valores nulos em 'df' com zero",
             "Remover colunas com muitos valores nulos em 'df'",
             # Adicione mais ações conforme necessário
