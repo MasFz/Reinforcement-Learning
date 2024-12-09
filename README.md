@@ -8,3 +8,6 @@ Aprendizado por reforço para limpeza de dados com dois agentes (Codificador e R
 ### RL.ipynb:
 Aprendizado por reforço mais tradicional, sem LLM, para imputação de dados faltantes em um DataFrame, usando agentes simples (Random, Q-Learning, SARSA) e avaliando o desempenho quantitativamente.
 Nesse Notebook utilizamos um modelo BaseLine a fim de explorar problemas com o RL utilizando LLM.
+
+### Link Apresentacao:
+https://www.canva.com/design/DAGYzSsypDc/9QrKZu1blIm-wizIFWDqLw/view?utm_content=DAGYzSsypDc&utm_campaign=designshare&utm_medium=link&utm_source=editor
